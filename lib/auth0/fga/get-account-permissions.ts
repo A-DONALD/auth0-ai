@@ -70,10 +70,13 @@ export async function getAccountPermissions(accounts: Accounts.Account[]) {
 	}
 
 	// ---------------------------------------------------------------------------
-	// ❌ STEP 2: Define the relations to check for. (must match your FGA model).
+	// ✅ STEP 2: Define the relations to check for. (must match your FGA model).
 	// ---------------------------------------------------------------------------
 	const RELATIONS: Accounts.AccountPermissions[] = [
 		'can_view',
+		"can_view_balances",
+		"can_view_transactions",
+		"can_transfer"
 		// ...👈 add other relations here
 		// Note: we are NOT asking `can_transfer_funds`
 		// That is a permission we check for at the time
@@ -81,7 +84,7 @@ export async function getAccountPermissions(accounts: Accounts.Account[]) {
 	];
 
 	// ---------------------------------------------------------------------------
-	// ❌ STEP 3: Build the batch checks.
+	// ✅ STEP 3: Build the batch checks.
 	// Think of it like you are asking FGA: “Does user:<customerId> have <relation> on account:<id>?”
 	// ---------------------------------------------------------------------------
 	const checks = accounts.flatMap(({ id, customerId }) => {
@@ -92,9 +95,9 @@ export async function getAccountPermissions(accounts: Accounts.Account[]) {
 					// Not sure what goes here?
 					// Check the types for ClientBatchCheckItem
 					// OR... ask Aiya for a hint
-					user: ``, //..., 👈 who?
+					user: `user:${customerId}`, //..., 👈 who?
 					relation, // 👈 can do what?
-					object: ``, // 👈 to or with what?
+					object: `account:${id}`, // 👈 to or with what?
 				}) as ClientBatchCheckItem
 		);
 	});
@@ -124,7 +127,7 @@ export async function getAccountPermissions(accounts: Accounts.Account[]) {
 	}
 
 	// ---------------------------------------------------------------------------
-	// ❌ STEP 6: Build the final accounts array. (rudimentary implementation)
+	// ✅ STEP 6: Build the final accounts array. (rudimentary implementation)
 	//
 	// 1. Map through all the accounts
 	// 2. Check what permissions exist for that account (what FGA returned)
@@ -142,21 +145,27 @@ export async function getAccountPermissions(accounts: Accounts.Account[]) {
 		// Just good practice
 		const copy: any = { ...account, permissions };
 
-		// ❌ 3. Remove sensitive fields if user is not authorized.
+		// ✅ 3. Remove sensitive fields if user is not authorized.
 		if (!permissions.includes('can_view_balances')) {
 			// 👈 What other fields should be stripped?
 			delete copy.balance;
+			delete copy.availableBalance;
+			delete copy.currentPrincipal;
+			delete copy.originalPrincipal;
+			delete copy.statementBalance;
+			delete copy.cashBalance;
 			// ...👈 anything else?
 			// HINT: availableBalance
 			// Not sure? Check @types/accounts.d.ts and decide for yourself
 		}
 
-		// ❌ 4. Transactions are nested in account.transactions but...
+		// ✅ 4. Transactions are nested in account.transactions but...
 		if (
-			copy?.transactions?.length
+			copy?.transactions?.length && !permissions.includes('can_view_transactions')
 			/* && !permissions... */
 		) {
 			// 👈 Are there permissions that control when they should be?
+			delete copy.transactions;
 			// Should they always be returned? 🤔
 			// Should we do something with them?
 			// Is this a similar use case to `can_view_balances`?

@@ -4,8 +4,9 @@ import { getUser } from '@/lib/auth0/client';
 import type { TokenSet } from '@auth0/ai';
 import type { CIBAAuthorizationRequest } from '@auth0/ai/CIBA';
 import {
-	// AccessDeniedInterrupt,
+	AccessDeniedInterrupt,
 	CIBAInterrupt,
+	UserDoesNotHavePushNotificationsInterrupt,
 } from '@auth0/ai/interrupts';
 import type { Tool, UIMessageStreamWriter } from 'ai';
 
@@ -76,25 +77,45 @@ export function withAsyncAuthorization({
 	// HINT: We just checked to ensure `auth0AI` was initialized above. That might be a clue as to what to use...
 	// ---------------------------------------------------------------------------
 
-	// ❌ STEP 3: Add newly created scope.
+	// ✅ STEP 3: Add newly created scope.
 	//
 	// TIP: A better practice would be to pull from `process.env.AUTH0_API_SCOPES` or similar.
-	const scopes = ['openid', 'profile', 'email' /** ❌ */];
+	const scopes = ['openid', 'profile', 'email', 'create:transfer'];
 
-	// return auth0AI.withAsyncUserConfirmation({
-	// 	scopes, /* ❌ STEP 3 */
-	// 	userID: /* ❌ STEP 4 */
-	// 	audience: /* ❌ STEP 5 */
-	// 	onAuthorizationRequest: /* ❌ STEP 6 */
-	//
-	//    - HINT 👆🏻: The Auth0 error has a `message` and a `code`.
-	//            The model expects an EXACT error `code` to be
-	//            returned otherwise it will not be able to process
-	//            the error correctly.
-	//
-	// 	onUnauthorized: /* ❌ STEP 7 */
-	// 	...options, /** 👀 ✅ Step 8: The Auth0AI wrapper spreads the same options as our wrapper! TypeScript interface to the rescue? 🧐 */
-	// })(tool) /** ✅ Step 9: Don't forget to inject the `tool` being wrapped! */;
+	return auth0AI.withAsyncUserConfirmation({
+		scopes,
+		// userID must be a promise that resolves to the subject id
+	 	userID: async () => {
+			const user = await getUser();
+			return user.sub;
+		},
+		// audience must match the API identifier used by your transfer endpoint
+		audience: 'http://localhost:3000/api/accounts/transfers',
+		// Stream status / instructions to the UI when authorization starts
+		onAuthorizationRequest: handleOnAuthorize(writer),
+		// Normalize unauthorized / interrupt errors into the tool response shape
+	 	onUnauthorized:  async (e) => {
+			if (e instanceof AccessDeniedInterrupt) {
+			// user explicitly denied the request
+			// (optionally stream a message via writer here)
+			}
+
+			if (e instanceof UserDoesNotHavePushNotificationsInterrupt) {
+			// user not enrolled in push MFA
+			// (you might call enrollMfaPush here or instruct the user)
+			}
+
+			// Return a normalized error object the tool system expects
+			return {
+				status: 'error',
+				dataCount: 0,
+				message: e.message,
+				error: e,
+			};
+    	},
+    	// spread any other user supplied options (bindingMessage, etc.)
+	 	...options, /** 👀 ✅ Step 8: The Auth0AI wrapper spreads the same options as our wrapper! TypeScript interface to the rescue? 🧐 */
+	})(tool) /** ✅ Step 9: Don't forget to inject the `tool` being wrapped! */;
 }
 
 // Must manually define type until SDK is updated with exported types

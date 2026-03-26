@@ -78,7 +78,7 @@ export async function POST(
 		//    - Add transferFunds tool
 		let tools = {
 			...toolRegistry,
-			// transferFunds: transferFunds(), /* ⚠️ TASK 9 */
+			transferFunds: transferFunds(),
 		};
 
 		// - Add Auth0 Guide
@@ -107,8 +107,7 @@ export async function POST(
 				// 6) Inject writer into transferFunds tool so it can emit progress.
 				tools = {
 					...tools,
-					transferFunds,
-					// transferFunds: transferFunds(dataStream), /* ⚠️ TASK 9 */
+					transferFunds: transferFunds(dataStream),
 				};
 
 				// 7) Setup provider options for middleware(s).

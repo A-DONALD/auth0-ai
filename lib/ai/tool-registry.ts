@@ -23,6 +23,6 @@ export const toolRegistry = {
 	getTransactions,
 	getUserProfile,
 	getWeather,
-	transferFunds /* ⚠️ TASK 9: Modify to call higher-order function (see `transfer-funds.ts`) */,
+	transferFunds: transferFunds(),
 	userSettings,
 } satisfies ToolSet;

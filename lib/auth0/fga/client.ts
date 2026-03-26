@@ -54,7 +54,7 @@ import {
 let singleton: OpenFgaClient | null = null;
 
 // ---------------------------------------------------------------------------
-// ❌ STEP 2: Create (internal) FGA client. Keep separate from public getter so you
+// ✅ STEP 2: Create (internal) FGA client. Keep separate from public getter so you
 // can add retries / backoff later if desired.
 
 // NOTE: If you are not familiar with NextJS -- be advised that ENV vars must be accessed inline as `process.env.{var}` and not via object destructuring.
@@ -75,17 +75,30 @@ export async function createClient() {
 				maxRetry: 2,
 				minWaitInMs: 300,
 			},
-			// apiUrl: process.env.FGA_API_URL,
+			apiUrl: process.env.FGA_API_URL,
 		};
 		// ---------------------------------------------------------------------------
-		// ❌ STEP 3: Return FGA client. Keep separate from public getter so you
+		// ✅ STEP 3: Return FGA client. Keep separate from public getter so you
 		// can add retries / backoff later if desired.
-
+		const fgaClient = new OpenFgaClient({
+			apiUrl: process.env.FGA_API_URL,
+			storeId: process.env.FGA_STORE_ID,
+			authorizationModelId: process.env.FGA_MODEL_ID,
+			credentials: {
+			method: CredentialsMethod.ClientCredentials,
+			config: {
+				apiTokenIssuer: process.env.FGA_API_TOKEN_ISSUER,
+				apiAudience: process.env.FGA_API_AUDIENCE,
+				clientId: process.env.FGA_CLIENT_ID,
+				clientSecret: process.env.FGA_CLIENT_SECRET,
+			},
+			}
+		});
 		// NOTE: If you are not familiar with NextJS -- be advised that ENV vars must be accessed inline as `process.env.{var}` and not via object destructuring.
 		// ---------------------------------------------------------------------------
-
-		// ❌ TODO: return instance of OpenFgaClient
-		return null;
+		// ✅ TODO: return instance of OpenFgaClient
+		// Step 02. Check for access
+		return fgaClient;
 	} catch (error: unknown) {
 		console.warn('FGA Client initialization failed!');
 		console.warn(error);
